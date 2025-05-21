@@ -6,6 +6,9 @@
 package barangaydocumentrequestsystem;
 
 import config.dbConnector;
+import config.passwordhashing;
+import java.security.NoSuchAlgorithmException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import javax.swing.JOptionPane;
 
@@ -55,7 +58,6 @@ public class registerform extends javax.swing.JFrame {
         jLabel4 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
         jLabel8 = new javax.swing.JLabel();
-        cl = new javax.swing.JButton();
         rg = new javax.swing.JButton();
         ut = new javax.swing.JComboBox<>();
         jLabel9 = new javax.swing.JLabel();
@@ -212,9 +214,6 @@ public class registerform extends javax.swing.JFrame {
         jLabel8.setText("WELCOME!");
         jPanel1.add(jLabel8, new org.netbeans.lib.awtextra.AbsoluteConstraints(130, 50, 170, 30));
 
-        cl.setText("CANCEL");
-        jPanel1.add(cl, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 430, 80, 30));
-
         rg.setText("REGISTER");
         rg.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -236,6 +235,11 @@ public class registerform extends javax.swing.JFrame {
         jLabel9.setForeground(new java.awt.Color(0, 153, 153));
         jLabel9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel9.setText("Sign up");
+        jLabel9.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jLabel9MouseClicked(evt);
+            }
+        });
         jPanel1.add(jLabel9, new org.netbeans.lib.awtextra.AbsoluteConstraints(200, 460, 50, 30));
 
         jLabel17.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
@@ -296,105 +300,88 @@ public class registerform extends javax.swing.JFrame {
     }//GEN-LAST:event_fnMouseClicked
 
     private void rgActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rgActionPerformed
-        
       dbConnector dbc = new dbConnector();
 
-    String firstName = fn.getText().trim();
-    String lastName = ln.getText().trim();
-    String contact = cn.getText().trim();
-    String username = un.getText().trim();
-    String password = ps.getText();
-    String gender = gd.getSelectedItem().toString();
-    String userType = ut.getSelectedItem().toString();
+        String firstName = fn.getText().trim();
+        String lastName = ln.getText().trim();
+        String contact = cn.getText().trim();
+        String username = un.getText().trim();
+        String password = new String(ps.getPassword()); // getPassword() is better than getText()
+        String gender = gd.getSelectedItem().toString();
+        String userType = ut.getSelectedItem().toString();
 
-    // 1. Required fields check
-    if (firstName.isEmpty() || lastName.isEmpty() || contact.isEmpty() || username.isEmpty() || password.isEmpty()) {
-        JOptionPane.showMessageDialog(null, "All fields are required!");
-        return;
-    }
-
-    // 2. Password length check
-    if (password.length() < 8) {
-        JOptionPane.showMessageDialog(null, "Password must be at least 8 characters!");
-        return;
-    }
-
-    // 3. Contact number numeric check
-    if (!contact.matches("\\d+")) {
-        JOptionPane.showMessageDialog(null, "Contact number must contain only digits!");
-        return;
-    }
-
-    // 4. Check for duplicate username
-    try {
-        String query = "SELECT * FROM users WHERE username = '" + username + "'";
-        ResultSet rs = dbc.getData(query);
-
-        if (rs.next()) {
-            JOptionPane.showMessageDialog(null, "Username is already taken!");
+        // Basic Validation
+        if (firstName.isEmpty() || lastName.isEmpty() || contact.isEmpty() ||
+            username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "All fields are required!");
             return;
         }
-    } catch (Exception e) {
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(null, "Error checking username uniqueness!");
-        return;
-    }
 
-    // 5. Insert into database if all validations pass
-    if (dbc.insertData("INSERT INTO users(first_name, last_name, gender, contact, username, password, user_type, status) "
-            + "VALUES('" + firstName + "','" + lastName + "','" + gender + "','" + contact + "','" + username + "','" + password + "','" + userType + "','Pending')")) {
-        
-        JOptionPane.showMessageDialog(null, "Inserted Successfully!");
-        Loginform lfr = new Loginform();
-        lfr.setVisible(true);
-        this.dispose();
+        if (password.length() < 8) {
+            JOptionPane.showMessageDialog(null, "Password must be at least 8 characters!");
+            return;
+        }
 
-    } else {
-        JOptionPane.showMessageDialog(null, "Failed to insert data. Please try again.");
-    }
+        if (!contact.matches("\\d+")) {
+            JOptionPane.showMessageDialog(null, "Contact number must contain only digits!");
+            return;
+        }
+
+        try {
+            // Hash the password
+            String hashedPassword = passwordhashing.hashPassword(password);
+
+            String sql = "INSERT INTO users (first_name, last_name, gender, contact, username, password, user_type, status) " +
+                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+            PreparedStatement pstmt = dbc.getConnection().prepareStatement(sql);
+            pstmt.setString(1, firstName);
+            pstmt.setString(2, lastName);
+            pstmt.setString(3, gender);
+            pstmt.setString(4, contact);
+            pstmt.setString(5, username);
+            pstmt.setString(6, hashedPassword);
+            pstmt.setString(7, userType);
+            pstmt.setString(8, "Pending");
+
+            int result = pstmt.executeUpdate();
+            if (result > 0) {
+                JOptionPane.showMessageDialog(null, "Inserted Successfully!");
+                Loginform lfr = new Loginform();
+                lfr.setVisible(true);
+                this.dispose();
+            } else {
+                JOptionPane.showMessageDialog(null, "Failed to insert data. Please try again.");
+            }
+        } catch (NoSuchAlgorithmException e) {
+            JOptionPane.showMessageDialog(null, "Hashing error: " + e.getMessage());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Database error: " + e.getMessage());
+        }
     }//GEN-LAST:event_rgActionPerformed
 
     private void utActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_utActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_utActionPerformed
 
+    private void jLabel9MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel9MouseClicked
+    Loginform loginForm = new Loginform();
+        loginForm.setVisible(true);
+        loginForm.pack();
+        loginForm.setLocationRelativeTo(null);
+        this.dispose();
+    }//GEN-LAST:event_jLabel9MouseClicked
+
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(registerform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(registerform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(registerform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(registerform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new registerform().setVisible(true);
-            }
+        java.awt.EventQueue.invokeLater(() -> {
+            new registerform().setVisible(true);
         });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton cl;
     private javax.swing.JTextField cn;
     private javax.swing.JTextField fn;
     private javax.swing.JComboBox<String> gd;

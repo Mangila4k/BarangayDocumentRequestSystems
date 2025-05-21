@@ -6,7 +6,11 @@
 package barangaydocumentrequestsystem;
 
 import admin.admindashboard;
+import admin.citizensform;
+import citizen.citizendashboard;
+import config.Session;
 import config.dbConnector;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.swing.JOptionPane;
@@ -22,19 +26,20 @@ public class Loginform extends javax.swing.JFrame {
      */
     public Loginform() {
         initComponents();
+        getRootPane().setDefaultButton(jButton1); // Pressing Enter triggers login
     }
-    
-    public static boolean loginAcc(String username, String password){
+
+    public static boolean loginAcc(String username, String password) {
         dbConnector connector = new dbConnector();
-        try{
-            String query = "SELECT * FROM users  WHERE username = '" + username + "' AND password = '" + password + "'";
+        try {
+            String query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "' AND status = 'Active'";
             ResultSet resultSet = connector.getData(query);
             return resultSet.next();
-        }catch (SQLException ex) {
+        } catch (SQLException ex) {
+            ex.printStackTrace();
             return false;
         }
-
-    }
+    }   
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -109,7 +114,7 @@ public class Loginform extends javax.swing.JFrame {
                 jLabel8MouseClicked(evt);
             }
         });
-        jPanel3.add(jLabel8, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 310, 200, 20));
+        jPanel3.add(jLabel8, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 320, 200, 20));
 
         jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(300, 180, 370, 360));
 
@@ -147,19 +152,90 @@ public class Loginform extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        if(loginAcc(user.getText(), pass.getText())){
-            JOptionPane.showMessageDialog(null,"login Successfully!");
-            admindashboard ads = new admindashboard();
-            ads.setVisible(true);
-            this.dispose();
-        }else{
-            JOptionPane.showMessageDialog(null, "Login Failed!");
+    dbConnector connector = new dbConnector();
+    String usernameText = user.getText().trim();
+    String passwordText = new String(pass.getPassword());
+
+    if (usernameText.isEmpty() || passwordText.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Please enter both username and password.", "Missing Input", JOptionPane.WARNING_MESSAGE);
+        if (usernameText.isEmpty()) {
+            user.requestFocus();
+        } else {
+            pass.requestFocus();
         }
+        return;
+    }
+
+    PreparedStatement pstmt = null;
+    ResultSet resultSet = null;
+
+    try {
+        String query = "SELECT * FROM users WHERE username = ? AND status = 'Active'";
+        pstmt = connector.getConnection().prepareStatement(query);
+        pstmt.setString(1, usernameText);
+        resultSet = pstmt.executeQuery();
+
+        if (resultSet.next()) {
+    String storedPassword = resultSet.getString("password");
+    String hashedInput = config.passwordhashing.hashPassword(passwordText);
+
+    // Allow both hashed and plain-text passwords
+    if (hashedInput.equals(storedPassword) || passwordText.equals(storedPassword)) {
+        // Password matches (either hashed or plain-text)
+
+        // Set session data
+        Session session = Session.getInstance();
+        session.setId(resultSet.getInt("id"));
+        session.setFirst_name(resultSet.getString("first_name"));
+        session.setLast_name(resultSet.getString("last_name"));
+        session.setGender(resultSet.getString("gender"));
+        session.setContact(resultSet.getString("contact"));
+        session.setUsername(resultSet.getString("username"));
+        session.setUser_type(resultSet.getString("user_type"));
+        session.setStatus(resultSet.getString("status"));
+
+        // Navigate to appropriate dashboard
+        if ("admin".equalsIgnoreCase(session.getUser_type())) {
+            new admindashboard().setVisible(true);
+        } else if ("citizen".equalsIgnoreCase(session.getUser_type())) {
+            new citizendashboard().setVisible(true);
+        } else {
+            JOptionPane.showMessageDialog(this, "Unknown user type. Please contact administrator.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        this.dispose();
+    } else {
+        JOptionPane.showMessageDialog(this, "Incorrect password. Please try again.", "Login Failed", JOptionPane.ERROR_MESSAGE);
+        pass.setText("");
+        pass.requestFocus();
+    }
+        } else {
+            JOptionPane.showMessageDialog(this, "User not found or your account is inactive.", "Login Failed", JOptionPane.ERROR_MESSAGE);
+            user.requestFocus();
+        }
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "A database error occurred. Please try again later.", "Database Error", JOptionPane.ERROR_MESSAGE);
+    } catch (Exception ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "An unexpected error occurred. Please try again later.", "Error", JOptionPane.ERROR_MESSAGE);
+    } finally {
+        try {
+            if (resultSet != null) resultSet.close();
+            if (pstmt != null) pstmt.close();
+            connector.closeConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jLabel8MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel8MouseClicked
-        registerform rgf = new registerform();
-        rgf.setVisible(true);
+    registerform rfm = new registerform();
+        rfm.setVisible(true);
+        rfm.pack();
+        rfm.setLocationRelativeTo(null);
         this.dispose();
     }//GEN-LAST:event_jLabel8MouseClicked
 
@@ -167,11 +243,6 @@ public class Loginform extends javax.swing.JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -179,24 +250,11 @@ public class Loginform extends javax.swing.JFrame {
                     break;
                 }
             }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(Loginform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(Loginform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(Loginform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+        } catch (Exception ex) {
             java.util.logging.Logger.getLogger(Loginform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
-        //</editor-fold>
-        //</editor-fold>
 
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new Loginform().setVisible(true);
-            }
-        });
+        java.awt.EventQueue.invokeLater(() -> new Loginform().setVisible(true));
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
