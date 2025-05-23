@@ -1,0 +1,321 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package citizen;
+
+import config.dbConnector;
+import admin.documentdata;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
+
+public class reqdocform extends javax.swing.JFrame {
+
+    private String userId;
+
+    // Constructor accepting the User ID (as String)
+    public reqdocform(String id) {
+        initComponents();
+        this.userId = getUserIdFromId(id); // fetch user ID from database
+        
+        if (this.userId != null) {
+            uid.setText(this.userId);  // Set user ID to the text field
+            loadDocumentTypes(); // Load document types into combo box
+        } else {
+            JOptionPane.showMessageDialog(null, "User not found!");
+        }
+    }
+
+    // Default constructor for design-time (optional, if you want)
+    public reqdocform() {
+        initComponents();
+    }
+
+    // Method to fetch user id from tbl_users based on id input
+    private String getUserIdFromId(String id) {
+        String userId = null;
+        try {
+            dbConnector dbc = new dbConnector();
+            String query = "SELECT id FROM users WHERE id = ?";
+            PreparedStatement pst = dbc.getConnection().prepareStatement(query);
+            pst.setString(1, id);
+
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                userId = rs.getString("id");
+            }
+
+            rs.close();
+            pst.close();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Error fetching user ID: " + e.getMessage());
+        }
+        return userId;
+    }
+
+    // Method to load document types into the combo box
+    private void loadDocumentTypes() {
+        try {
+            dbConnector dbc = new dbConnector();
+            String query = "SELECT d_type FROM tbl_documents";
+            ResultSet rs = dbc.getData(query);
+
+            dtype.removeAllItems(); // Clear previous items in combo box
+            while (rs.next()) {
+                dtype.addItem(rs.getString("d_type")); // Add document types
+            }
+
+            rs.close();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Error loading document types: " + e.getMessage());
+        }
+    }
+
+    // Method to handle document request submission
+    private void requestDocument() {
+        String selectedType = (String) dtype.getSelectedItem();
+        if (selectedType != null) {
+            try {
+                dbConnector dbc = new dbConnector();
+                String query = "SELECT d_id FROM tbl_documents WHERE d_type = ?";
+                PreparedStatement pst = dbc.getConnection().prepareStatement(query);
+                pst.setString(1, selectedType);
+
+                ResultSet rs = pst.executeQuery();
+                if (rs.next()) {
+                    String documentId = rs.getString("d_id");
+                    String status = "Pending"; // Default status
+                    boolean success = insertRequestedDocument(userId, documentId, status);
+                    if (!success) {
+                        JOptionPane.showMessageDialog(null, "Failed to request document.");
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Document requested successfully!");
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Document not found.");
+                }
+
+                rs.close();
+                pst.close();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "Error processing document request: " + e.getMessage());
+            }
+        }
+    }
+
+    // Method to insert the document request into the database
+    private boolean insertRequestedDocument(String userId, String documentId, String status) {
+        try {
+            dbConnector dbc = new dbConnector();
+            String query = "INSERT INTO tbl_requested_documents (user_id, d_id, request_date, status) VALUES (?, ?, NOW(), ?)";
+            PreparedStatement pst = dbc.getConnection().prepareStatement(query);
+            pst.setString(1, userId);
+            pst.setString(2, documentId);
+            pst.setString(3, status);
+
+            int result = pst.executeUpdate();
+            pst.close();
+
+            return result > 0;  // true if insert succeeded
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null, "Error inserting document request: " + e.getMessage());
+            return false;
+        }
+    }
+
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jPanel2 = new javax.swing.JPanel();
+        uid = new javax.swing.JTextField();
+        jLabel15 = new javax.swing.JLabel();
+        jLabel10 = new javax.swing.JLabel();
+        save = new javax.swing.JButton();
+        exit = new javax.swing.JButton();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        dtype = new javax.swing.JComboBox<>();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setUndecorated(true);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowActivated(java.awt.event.WindowEvent evt) {
+                formWindowActivated(evt);
+            }
+        });
+
+        jPanel2.setBackground(new java.awt.Color(0, 153, 153));
+        jPanel2.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+
+        uid.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        uid.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        uid.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        uid.setEnabled(false);
+        uid.setOpaque(false);
+        jPanel2.add(uid, new org.netbeans.lib.awtextra.AbsoluteConstraints(150, 70, 150, 30));
+
+        jLabel15.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        jLabel15.setForeground(new java.awt.Color(240, 240, 240));
+        jLabel15.setText("Citizen Id:");
+        jPanel2.add(jLabel15, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 80, -1, -1));
+
+        jLabel10.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        jLabel10.setForeground(new java.awt.Color(240, 240, 240));
+        jLabel10.setText("Document Type:");
+        jPanel2.add(jLabel10, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 130, 120, -1));
+
+        save.setBackground(new java.awt.Color(0, 102, 102));
+        save.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        save.setForeground(new java.awt.Color(240, 240, 240));
+        save.setText("SAVE");
+        save.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        save.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                saveMouseClicked(evt);
+            }
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                saveMouseEntered(evt);
+            }
+        });
+        jPanel2.add(save, new org.netbeans.lib.awtextra.AbsoluteConstraints(200, 170, 100, 30));
+
+        exit.setBackground(new java.awt.Color(0, 102, 102));
+        exit.setFont(new java.awt.Font("Arial", 1, 14)); // NOI18N
+        exit.setForeground(new java.awt.Color(240, 240, 240));
+        exit.setText("EXIT");
+        exit.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        exit.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                exitMouseClicked(evt);
+            }
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                exitMouseEntered(evt);
+            }
+        });
+        jPanel2.add(exit, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 170, 100, 30));
+
+        jPanel1.setBackground(new java.awt.Color(0, 102, 102));
+
+        jLabel1.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
+        jLabel1.setForeground(new java.awt.Color(255, 255, 255));
+        jLabel1.setText("Request Document!");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 182, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(188, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 28, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+
+        jPanel2.add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 380, 50));
+
+        jPanel2.add(dtype, new org.netbeans.lib.awtextra.AbsoluteConstraints(150, 120, 150, 30));
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 319, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 219, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
+
+        pack();
+        setLocationRelativeTo(null);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void saveMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_saveMouseClicked
+        userId = uid.getText().trim();  // Get from the text field
+        if (userId.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "User ID is missing!");
+            return;
+        }
+        requestDocument(); // Triggers DB insert
+    }//GEN-LAST:event_saveMouseClicked
+
+    private void saveMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_saveMouseEntered
+
+    }//GEN-LAST:event_saveMouseEntered
+
+    private void exitMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_exitMouseClicked
+        new citizendashboard().setVisible(true);
+        this.dispose(); // Close the current window
+    }//GEN-LAST:event_exitMouseClicked
+
+    private void exitMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_exitMouseEntered
+        // TODO add your handling code here:
+    }//GEN-LAST:event_exitMouseEntered
+
+    private void formWindowActivated(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowActivated
+        // TODO add your handling code here:
+    }//GEN-LAST:event_formWindowActivated
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(reqdocform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(reqdocform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(reqdocform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(reqdocform.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new reqdocform().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JComboBox<String> dtype;
+    public javax.swing.JButton exit;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel15;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    public javax.swing.JButton save;
+    public javax.swing.JTextField uid;
+    // End of variables declaration//GEN-END:variables
+}
